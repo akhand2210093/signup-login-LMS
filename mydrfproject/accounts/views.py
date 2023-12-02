@@ -132,14 +132,18 @@ from .serializers import ChangePasswordSerializer
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password(request):
-    if request.method == 'POST':
-        serializer = ChangePasswordSerializer(data=request.data)
-        if serializer.is_valid():
+    try:
+        if request.method == 'POST':
+            serializer = ChangePasswordSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
             user = request.user
-            if user.check_password(serializer.data.get('old_password')):
-                user.set_password(serializer.data.get('new_password'))
+            if user.check_password(serializer.validated_data.get('old_password')):
+                user.set_password(serializer.validated_data.get('new_password'))
                 user.save()
                 update_session_auth_hash(request, user)  # To update session after password change
                 return Response({'message': 'Password changed successfully.'}, status=status.HTTP_200_OK)
-            return Response({'error': 'Incorrect old password.'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'Incorrect old password.'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
